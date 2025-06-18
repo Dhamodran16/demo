@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Delivery</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    h1 {
+      color: #ff6f61;
+    }
+    button {
+      margin: 5px;
+      padding: 8px 16px;
+      background: #ff6f61;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #ff4a3d;
+    }
+    input[type="text"] {
+      padding: 5px;
+      margin: 5px;
+    }
+    .order {
+      background: #fff;
+      padding: 10px;
+      margin: 10px 0;
+      border-left: 5px solid #ff6f61;
+    }
+    .menu-item {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🍕 Food Delivery Orders</h1>
+
+  <h3>Create New Order:</h3>
+  <input type="text" id="orderName" placeholder="Customer Name">
+
+  <div id="menuItems">
+    <div class="menu-item">
+      <input type="checkbox" id="pizza" value="pizza">
+      <label for="pizza">Pizza (₹200)</label>
+    </div>
+    <div class="menu-item">
+      <input type="checkbox" id="burger" value="burger">
+      <label for="burger">Burger (₹100)</label>
+    </div>
+    <div class="menu-item">
+      <input type="checkbox" id="pasta" value="pasta">
+      <label for="pasta">Pasta (₹150)</label>
+    </div>
+    <div class="menu-item">
+      <input type="checkbox" id="coke" value="coke">
+      <label for="coke">Coke (₹50)</label>
+    </div>
+  </div>
+
+  <button onclick="createOrder()">Place Order</button>
+ 
+  <h3>All Orders:</h3>
+  <button onclick="fetchOrders()">Refresh Orders</button>
+  <div id="orders"></div>
+
+  <script>
+    const apiUrl = 'http://localhost:3000';
+
+    async function createOrder() {
+  const name = document.getElementById('orderName').value;
+  const selectedItems = Array.from(document.querySelectorAll('#menuItems input[type="checkbox"]:checked'))
+    .map(item => item.value);
+
+  if (!name || selectedItems.length === 0) {
+    alert('Please enter your name and select at least one item.');
+    return;
+  }
+
+  const response = await fetch(`${apiUrl}/placeOrder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, items: selectedItems.join(',') })
+  });
+
+  const data = await response.json();
+  alert(data.message);
+
+  // Reset the form fields
+  document.getElementById('orderName').value = ''; // Clear the name input
+  document.querySelectorAll('#menuItems input[type="checkbox"]').forEach(checkbox => checkbox.checked = false); // Uncheck all checkboxes
+  
+  fetchOrders();
+}
+
+    async function fetchOrders() {
+      const res = await fetch(`${apiUrl}/orders`);
+      const orders = await res.json();
+      const ordersDiv = document.getElementById('orders');
+      ordersDiv.innerHTML = '';
+
+      orders.forEach(order => {
+        const div = document.createElement('div');
+        div.className = 'order';
+        div.innerHTML = `
+          <strong>Order ID:</strong> ${order._id} <br>
+          <strong>Name:</strong> ${order.name} <br>
+          <strong>Items:</strong> ${order.items.join(', ')} <br>
+          <strong>Total:</strong> ₹${order.totalCost} <br>
+          <button onclick="deleteOrder('${order._id}')">Delete</button>
+          <button onclick="editOrder('${order._id}', '${order.name}', '${order.items.join(',')}')">Edit</button>
+        `;
+        ordersDiv.appendChild(div);
+      });
+    }
+
+    async function deleteOrder(id) {
+      if (confirm('Delete this order?')) {
+        await fetch(`${apiUrl}/orders/${id}`, { method: 'DELETE' });
+        fetchOrders();
+      }
+    }
+
+    function editOrder(id, currentName, currentItems) {
+      const newName = prompt('Enter new customer name:', currentName);
+      const newItems = prompt('Enter new items (comma-separated):', currentItems);
+
+      if (newName && newItems) {
+        fetch(`${apiUrl}/orders/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newName, items: newItems })
+        })
+        .then(response => response.json())
+        .then(data => {
+          alert(data.message);
+          fetchOrders();
+        });
+      }
+    }
+
+    // Load orders on page load
+    fetchOrders();
+  </script>
+</body>
+</html> 
